@@ -25,16 +25,14 @@ from datetime import datetime, date, time, timedelta, timezone
 # =====================================================
 @st.cache_resource
 def init_connection():
-    # Recomendado: utilizar a URL de conexão completa (Transaction Mode porta 6543)
-    # para evitar erros de resolução de DNS (IPv6) e SSL no Streamlit Cloud.
-    return psycopg2.connect(st.secrets["DATABASE_URL"])
+    # Adicionamos conect_timeout para evitar que a conexão trave sem resposta
+    return psycopg2.connect(st.secrets["DATABASE_URL"], connect_timeout=10)
 
 # Inicializa conexão
 conn = init_connection()
 cursor = conn.cursor()
 
-# Garante que não haja transações pendentes e define autocommit para evitar deadlocks
-conn.autocommit = True
+# Garante que não haja transações pendentes
 conn.rollback()
 
 
@@ -409,6 +407,7 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
 
 
