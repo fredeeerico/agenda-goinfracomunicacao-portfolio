@@ -30,7 +30,7 @@ def init_connection():
         database=st.secrets["DB_NAME"],   # nome do banco (portfolio)
         user=st.secrets["DB_USER"],       # usuário
         password=st.secrets["DB_PASSWORD"], # senha
-        port=st.secrets["DB_PORT"],       # porta
+        port=int(st.secrets["DB_PORT"]),# porta
         sslmode=st.secrets["DB_SSLMODE"], # SSL obrigatório
     )
 
@@ -412,4 +412,5 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
