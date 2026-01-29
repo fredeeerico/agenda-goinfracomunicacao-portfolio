@@ -19,26 +19,26 @@ import psycopg2
 from datetime import datetime, date, time, timedelta, timezone
 
 # =====================================================
-# DATABASE CONNECTION
-# Conexão PostgreSQL utilizando Streamlit Secrets
-# Neste ambiente (portfolio), o banco possui dados fictícios
-# mantendo a mesma estrutura do ambiente real
+# DATABASE CONNECTION - PORTFOLIO
+# Conecta ao PostgreSQL do Supabase Portfolio (dados fictícios)
+# Mantém a mesma estrutura do banco real
 # =====================================================
 @st.cache_resource
 def init_connection():
     return psycopg2.connect(
-        host=st.secrets["DB_HOST"],
-        database=st.secrets["DB_NAME"],
-        user=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASSWORD"],
-        port=st.secrets["DB_PORT"],
-        sslmode=st.secrets["DB_SSLMODE"],
+        host=st.secrets["DB_HOST"],       # host do Supabase portfolio
+        database=st.secrets["DB_NAME"],   # nome do banco (portfolio)
+        user=st.secrets["DB_USER"],       # usuário
+        password=st.secrets["DB_PASSWORD"], # senha
+        port=st.secrets["DB_PORT"],       # porta
+        sslmode=st.secrets["DB_SSLMODE"], # SSL obrigatório
     )
 
+# Inicializa conexão
 conn = init_connection()
 cursor = conn.cursor()
 
-# Garante que não exista transação pendente ao iniciar a aplicação
+# Garante que não haja transações pendentes
 conn.rollback()
 
 # =====================================================
@@ -412,3 +412,4 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
