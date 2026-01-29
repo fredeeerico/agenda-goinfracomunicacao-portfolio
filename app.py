@@ -31,7 +31,7 @@ def init_connection():
         user=st.secrets["DB_USER"],       # usuário
         password=st.secrets["DB_PASSWORD"], # senha
         port=int(st.secrets["DB_PORT"]),# porta
-        sslmode=st.secrets["DB_SSLMODE"], # SSL obrigatório
+        sslmode="require", # SSL obrigatório
     )
 
 # Inicializa conexão
@@ -412,5 +412,6 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
 
