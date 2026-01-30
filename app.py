@@ -24,16 +24,19 @@ from datetime import datetime, date, time, timedelta, timezone
 # =====================================================
 @st.cache_resource
 def init_connection():
-    # Usa os dados do secrets.toml para conectar ao banco de dados
     return psycopg2.connect(
-        host=st.secrets["DB_HOST"],  # Host do seu projeto
-        database=st.secrets["DB_NAME"],  # Nome do banco de dados
-        user=st.secrets["DB_USER"],  # Usuário do banco de dados
-        password=st.secrets["DB_PASSWORD"],  # Senha do banco de dados
-        port=st.secrets["DB_PORT"],  # Porta do banco de dados
-        sslmode=st.secrets["DB_SSLMODE"],  # SSL necessário para segurança
-        connect_timeout=10  # Timeout para a conexão
+        host=st.secrets["DB_HOST"],  # Acessando a variável DB_HOST
+        database=st.secrets["DB_NAME"],  # Acessando o nome do banco DB_NAME
+        user=st.secrets["DB_USER"],  # Acessando o nome de usuário DB_USER
+        password=st.secrets["DB_PASSWORD"],  # Acessando a senha DB_PASSWORD
+        port=st.secrets["DB_PORT"],  # Acessando a porta DB_PORT
+        sslmode=st.secrets["DB_SSLMODE"]  # Acessando o SSL
     )
+
+# Conexão inicial
+conn = init_connection()
+cursor = conn.cursor()
+
 
 # Inicializa a conexão
 conn = init_connection()
@@ -421,6 +424,7 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
 
 
