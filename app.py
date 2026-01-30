@@ -2,7 +2,7 @@ import streamlit as st
 import psycopg2
 import psycopg2.extras
 
-# Função de conexão
+# Função para inicializar a conexão com o banco de dados
 @st.cache_resource
 def init_connection():
     return psycopg2.connect(
@@ -14,7 +14,7 @@ def init_connection():
         sslmode=st.secrets["DB_SSLMODE"],  # Acessando a variável DB_SSLMODE
     )
 
-# Teste da conexão
+# Testar a conexão
 try:
     conn = init_connection()
     st.write("Conexão bem-sucedida!")
@@ -209,5 +209,6 @@ elif st.session_state.aba_atual == "LISTA":
         if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
             cursor.execute("DELETE FROM eventos WHERE id=%s", (ev['id'],))
             conn.commit(); st.rerun()
+
 
 
