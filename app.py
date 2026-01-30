@@ -1,7 +1,7 @@
 import streamlit as st
 import psycopg2
 import psycopg2.extras
-from datetime import datetime, date, time, timedelta, timezone
+from datetime import datetime, date, time, timezone, timedelta
 
 # -----------------------------
 # 1. CONEXÃO E LIMPEZA
@@ -9,12 +9,12 @@ from datetime import datetime, date, time, timedelta, timezone
 @st.cache_resource
 def init_connection():
     return psycopg2.connect(
-        host=st.secrets["DB_HOST"],
-        database=st.secrets["DB_NAME"],
-        user=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASSWORD"],
-        port=st.secrets["DB_PORT"],
-        sslmode=st.secrets["DB_SSLMODE"],
+        host=st.secrets["DB_HOST"],       # Acessando a variável DB_HOST
+        database=st.secrets["DB_NAME"],   # Acessando o nome do banco DB_NAME
+        user=st.secrets["DB_USER"],       # Acessando o nome de usuário DB_USER
+        password=st.secrets["DB_PASSWORD"],  # Acessando a senha DB_PASSWORD
+        port=st.secrets["DB_PORT"],       # Acessando a porta DB_PORT
+        sslmode=st.secrets["DB_SSLMODE"]  # Acessando o SSL
     )
 
 conn = init_connection()
@@ -25,13 +25,13 @@ conn.rollback()
 # -----------------------------
 # 2. ESTADOS E CONFIGURAÇÃO
 # -----------------------------
-st.set_page_config(page_title="Agenda PRCOSET", page_icon="📅", layout="wide")
+st.set_page_config(page_title="Agenda Portfolio", page_icon="📅", layout="wide")
 
 for key in ["aba_atual", "editando", "evento_id", "msg"]:
     if key not in st.session_state:
         st.session_state[key] = "LISTA" if key == "aba_atual" else None
 
-st.title("📅 Agenda PRCOSET")
+st.title("📅 Agenda Portfolio")
 
 # Menu Superior
 cm1, cm2, _ = st.columns([1, 1, 4])
@@ -118,7 +118,6 @@ if st.session_state.aba_atual == "FORM":
 # 4. TELA DE LISTAGEM
 # -----------------------------
 elif st.session_state.aba_atual == "LISTA":
-    
     with st.expander("🔍 FILTRAR BUSCA", expanded=False):
         f_col1, f_col2, f_col3 = st.columns(3)
         with f_col1: filtro_data = st.date_input("Filtrar por Data", value=None)
@@ -127,18 +126,6 @@ elif st.session_state.aba_atual == "LISTA":
 
     cursor.execute("SELECT * FROM eventos ORDER BY data ASC, hora_inicio ASC")
     eventos = cursor.fetchall()
-    
-    agora_dt = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
-    hoje = agora_dt.date()
-    hora_agora_str = agora_dt.time().strftime('%H:%M')
-
-    def formatar_hora(valor):
-        if isinstance(valor, time):
-            return valor.strftime('%H:%M')
-        try:
-            return str(valor)[:5]
-        except:
-            return "00:00"
 
     if not eventos:
         st.info("Nenhum evento encontrado.")
@@ -147,66 +134,4 @@ elif st.session_state.aba_atual == "LISTA":
         d_dt = ev["data"] if isinstance(ev["data"], date) else datetime.strptime(str(ev["data"]), "%Y-%m-%d").date()
 
         if filtro_data and d_dt != filtro_data: continue
-        if filtro_tipo == "Agenda do Presidente" and ev["agenda_presidente"] != 1: continue
-        if filtro_tipo == "Outras Agendas" and ev["agenda_presidente"] == 1: continue
-        if filtro_equipe and filtro_equipe.lower() not in str(ev["responsaveis"]).lower(): continue
-
-        cor_base = "#2b488e" if ev["agenda_presidente"] == 1 else "#109439"
-        cor_fonte = "white"
-        borda_4_lados = "1px solid rgba(255,255,255,0.2)"
-        barra_esquerda = "12px solid #ffffff44"
-        badge, opac = "", "1"
-        decor = "line-through" if ev["status"] == "CANCELADO" else "none"
-
-        if d_dt < hoje:
-            cor_base, cor_fonte, opac = "#d9d9d9", "#666666", "0.7"
-            barra_esquerda = "12px solid #999999"
-        
-        elif d_dt == hoje:
-            borda_4_lados = "4px solid #FFD700"
-            barra_esquerda = "12px solid #FFD700"
-            badge = "<span style='background:#FFD700; color:black; padding:3px 10px; border-radius:10px; font-weight:bold; font-size:12px; margin-left:10px;'>HOJE!</span>"
-            
-            hi_s = formatar_hora(ev["hora_inicio"])
-            hf_s = formatar_hora(ev["hora_fim"])
-            if hi_s <= hora_agora_str <= hf_s:
-                borda_4_lados = "4px solid #ff2b2b"
-                barra_esquerda = "12px solid #ff2b2b"
-                badge = "<span style='background:#ff2b2b; color:white; padding:3px 10px; border-radius:10px; font-weight:bold; font-size:12px; margin-left:10px;'>AGORA!</span>"
-
-        link_zap = ""
-        if ev["precisa_motorista"] == 1 and ev["motorista_telefone"]:
-            zap_limpo = "".join(filter(str.isdigit, str(ev["motorista_telefone"])))
-            link_zap = f"<br>🚗 <b>Motorista:</b> {ev['motorista_nome']} (<a href='https://wa.me{zap_limpo}' style='color:{cor_fonte}; font-weight:bold;'>{ev['motorista_telefone']}</a>)"
-
-        st.markdown(f"""
-        <div style="background:{cor_base}; color:{cor_fonte}; padding:22px; border-radius:15px; margin-bottom:15px; 
-                    opacity:{opac}; text-decoration:{decor}; 
-                    border:{borda_4_lados}; border-left:{barra_esquerda};">
-            <h3 style="margin:0; font-size:22px;">{'👑' if ev['agenda_presidente'] == 1 else '📌'} {ev['titulo']} {badge} 
-                <span style="float:right; font-size:12px; background:rgba(0,0,0,0.3); padding:5px 12px; border-radius:20px;">{ev['status']}</span>
-            </h3>
-            <div style="margin-top:12px; font-size:16px; line-height:1.6;">
-                <b>📅 {d_dt.strftime('%d/%m/%Y')}</b> | ⏰ {formatar_hora(ev['hora_inicio'])} às {formatar_hora(ev['hora_fim'])}<br>
-                📍 <b>Local:</b> {ev['local']}<br>
-                🏠 <b>Endereço:</b> {ev['endereco']}<br>
-                🎥 <b>Cobertura:</b> {ev['cobertura']} | 👥 <b>Equipe:</b> {ev['responsaveis']}<br>
-                🎒 <b>Equipamentos:</b> {ev['equipamentos']} {link_zap}
-            </div>
-            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 15px; font-size:14px; border: 1px dashed rgba(255,255,255,0.3);">
-                <b>📝 OBSERVAÇÕES:</b> {ev['observacoes'] if ev['observacoes'] else "Sem observações."}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        c1, c2, c3, _ = st.columns([1, 1.2, 1, 4])
-        if c1.button("✏️ Editar", key=f"e_{ev['id']}"):
-            st.session_state.editando, st.session_state.evento_id, st.session_state.aba_atual = True, ev['id'], "FORM"
-            st.rerun()
-        if c2.button("🚫 Alterar Status", key=f"s_{ev['id']}"):
-            novo_s = "CANCELADO" if ev['status']=="ATIVO" else "ATIVO"
-            cursor.execute("UPDATE eventos SET status=%s WHERE id=%s", (novo_s, ev['id']))
-            conn.commit(); st.rerun()
-        if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
-            cursor.execute("DELETE FROM eventos WHERE id=%s", (ev['id'],))
-            conn.commit(); st.rerun()
+        if filtro
