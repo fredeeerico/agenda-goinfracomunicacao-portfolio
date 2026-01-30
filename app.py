@@ -1,25 +1,24 @@
 import streamlit as st
 import psycopg2
 import psycopg2.extras
+from datetime import date, time, datetime, timezone, timedelta
 
-# Função para inicializar a conexão com o banco de dados
+# -----------------------------
+# CONEXÃO COM O BANCO (SUPABASE)
+# -----------------------------
 @st.cache_resource
 def init_connection():
     return psycopg2.connect(
-        host=st.secrets["DB_HOST"],  # Acessando a variável DB_HOST
-        database=st.secrets["DB_NAME"],  # Acessando a variável DB_NAME
-        user=st.secrets["DB_USER"],  # Acessando a variável DB_USER
-        password=st.secrets["DB_PASSWORD"],  # Acessando a variável DB_PASSWORD
-        port=st.secrets["DB_PORT"],  # Acessando a variável DB_PORT
-        sslmode=st.secrets["DB_SSLMODE"],  # Acessando a variável DB_SSLMODE
+        host=st.secrets["DB_HOST"],
+        database=st.secrets["DB_NAME"],
+        user=st.secrets["DB_USER"],
+        password=st.secrets["DB_PASSWORD"],
+        port=st.secrets["DB_PORT"],
+        sslmode=st.secrets["DB_SSLMODE"],
     )
 
-# Testar a conexão
-try:
-    conn = init_connection()
-    st.write("Conexão bem-sucedida!")
-except Exception as e:
-    st.error(f"Erro de conexão: {e}")
+conn = init_connection()
+cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 
 # -----------------------------
@@ -210,6 +209,7 @@ elif st.session_state.aba_atual == "LISTA":
         if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
             cursor.execute("DELETE FROM eventos WHERE id=%s", (ev['id'],))
             conn.commit(); st.rerun()
+
 
 
 
