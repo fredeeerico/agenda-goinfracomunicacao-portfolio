@@ -13,6 +13,15 @@ def get_engine():
         max_overflow=2,
     )
 
+engine = get_engine()
+
+try:
+    with engine.connect() as conn:
+        df = pd.read_sql(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+            conn
+        )
+
     st.success("Conectado com sucesso ao Supabase!")
     st.write("Tabelas encontradas:")
     st.dataframe(df)
@@ -20,4 +29,6 @@ def get_engine():
 except Exception as e:
     st.error("Erro ao conectar no banco")
     st.exception(e)
+
+
 
