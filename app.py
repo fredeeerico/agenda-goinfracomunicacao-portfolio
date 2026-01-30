@@ -25,26 +25,23 @@ from datetime import datetime, date, time, timedelta, timezone
 # =====================================================
 @st.cache_resource
 def init_connection():
-    # Adicionamos sslmode extra para garantir o handshake no Streamlit Cloud
+    # Conectando ao banco usando os secrets
     return psycopg2.connect(
-        host=st.secrets["DB_HOST"],
-        dbname=st.secrets["DB_NAME"],
-        user=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASSWORD"],
-        port=st.secrets["DB_PORT"],
-        sslmode=st.secrets["DB_SSLMODE"],
-        connect_timeout=10
+        host=st.secrets["DB_HOST"],  # Host do seu projeto
+        dbname=st.secrets["DB_NAME"],  # Nome do banco de dados
+        user=st.secrets["DB_USER"],  # Usuário (sempre 'postgres' para Supabase)
+        password=st.secrets["DB_PASSWORD"],  # Senha do seu projeto
+        port=st.secrets["DB_PORT"],  # Porta do banco (geralmente 5432)
+        sslmode=st.secrets["DB_SSLMODE"],  # SSL Mode, sempre 'require' no Supabase
+        connect_timeout=10  # Timeout para a conexão
     )
 
-
-# Inicializa conexão
+# Inicializando a conexão
 conn = init_connection()
 cursor = conn.cursor()
 
 # Garante que não haja transações pendentes
 conn.rollback()
-
-
 
 # =====================================================
 # GLOBAL CONFIGURATION & APPLICATION STATE
@@ -417,6 +414,7 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
 
 
