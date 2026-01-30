@@ -30,7 +30,7 @@ Python, Streamlit, PostgreSQL/Supabase, HTML/CSS
 ---
 
 ## 🔗 Demo
-[Ver App / View App](https://agenda-prcoset-portfolio.streamlit.app/)
+[Ver App / View App](https://agenda-portfolio.streamlit.app/)
 
 ---
 
