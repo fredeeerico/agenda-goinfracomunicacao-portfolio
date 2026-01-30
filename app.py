@@ -1,11 +1,8 @@
 import streamlit as st
 import psycopg2
 import psycopg2.extras
-from datetime import datetime, date, time, timedelta, timezone
 
-# -----------------------------
-# 1. CONEXÃO E LIMPEZA
-# -----------------------------
+# Função de conexão
 @st.cache_resource
 def init_connection():
     return psycopg2.connect(
@@ -17,11 +14,12 @@ def init_connection():
         sslmode=st.secrets["DB_SSLMODE"],  # Acessando a variável DB_SSLMODE
     )
 
-conn = init_connection()
-
-# Cursor que retorna dicionário em vez de tupla
-cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-conn.rollback()
+# Teste da conexão
+try:
+    conn = init_connection()
+    st.write("Conexão bem-sucedida!")
+except Exception as e:
+    st.error(f"Erro de conexão: {e}")
 
 # -----------------------------
 # 2. ESTADOS E CONFIGURAÇÃO
@@ -211,4 +209,5 @@ elif st.session_state.aba_atual == "LISTA":
         if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
             cursor.execute("DELETE FROM eventos WHERE id=%s", (ev['id'],))
             conn.commit(); st.rerun()
+
 
