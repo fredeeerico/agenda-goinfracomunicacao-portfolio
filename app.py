@@ -19,22 +19,29 @@ import psycopg2
 from datetime import datetime, date, time, timedelta, timezone
 
 # =====================================================
-# DATABASE CONNECTION - PORTFOLIO
-# Conecta ao PostgreSQL do Supabase Portfolio (dados fictícios)
-# Mantém a mesma estrutura do banco real
+# DATABASE CONNECTION - Agenda-Portfolio
+# Conecta ao PostgreSQL do Supabase Agenda-Portfolio (dados reais)
 # =====================================================
 @st.cache_resource
 def init_connection():
-    # Conectando ao banco usando os secrets
+    # Usa os dados do secrets.toml para conectar ao banco de dados
     return psycopg2.connect(
         host=st.secrets["DB_HOST"],  # Host do seu projeto
-        dbname=st.secrets["DB_NAME"],  # Nome do banco de dados
-        user=st.secrets["DB_USER"],  # Usuário (sempre 'postgres' para Supabase)
-        password=st.secrets["DB_PASSWORD"],  # Senha do seu projeto
-        port=st.secrets["DB_PORT"],  # Porta do banco (geralmente 5432)
-        sslmode=st.secrets["DB_SSLMODE"],  # SSL Mode, sempre 'require' no Supabase
+        database=st.secrets["DB_NAME"],  # Nome do banco de dados
+        user=st.secrets["DB_USER"],  # Usuário do banco de dados
+        password=st.secrets["DB_PASSWORD"],  # Senha do banco de dados
+        port=st.secrets["DB_PORT"],  # Porta do banco de dados
+        sslmode=st.secrets["DB_SSLMODE"],  # SSL necessário para segurança
         connect_timeout=10  # Timeout para a conexão
     )
+
+# Inicializa a conexão
+conn = init_connection()
+cursor = conn.cursor()
+
+# Garante que não haja transações pendentes
+conn.rollback()
+
 
 # Inicializando a conexão
 conn = init_connection()
@@ -414,6 +421,7 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
 
 
