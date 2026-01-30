@@ -22,7 +22,8 @@ from datetime import datetime, date, time, timedelta, timezone
 # DATABASE CONNECTION - Agenda-Portfolio
 # Conecta ao PostgreSQL do Supabase Agenda-Portfolio (dados reais)
 # =====================================================
-@st.cache_resource
+
+# Função para inicializar a conexão com o banco de dados (sem cache)
 def init_connection():
     return psycopg2.connect(
         host=st.secrets["DB_HOST"],  # Acessando a variável DB_HOST
@@ -33,6 +34,9 @@ def init_connection():
         sslmode=st.secrets["DB_SSLMODE"]  # Acessando o SSL
     )
 
+# Conexão inicial
+conn = init_connection()
+cursor = conn.cursor()
 # Conexão inicial
 conn = init_connection()
 cursor = conn.cursor()
@@ -424,6 +428,7 @@ elif st.session_state.aba_atual == "LISTA":
                 )
                 conn.commit()
                 st.rerun()
+
 
 
 
