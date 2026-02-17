@@ -1,7 +1,6 @@
 import streamlit as st
 import psycopg2
 import psycopg2.extras
-from datetime import datetime, date, time, timedelta, timezone
 
 # ======================================================
 # 1. CONEXÃO COM O BANCO DE DADOS
@@ -10,23 +9,63 @@ from datetime import datetime, date, time, timedelta, timezone
 @st.cache_resource
 def init_connection():
     """
-    Inicializa a conexão com o banco PostgreSQL.
-    O uso de cache evita múltiplas conexões desnecessárias.
+    Inicializa a conexão com o PostgreSQL (Supabase).
+    Usa pooler IPv4 e trata erros corretamente.
     """
-    return psycopg2.connect(
-        st.secrets["DATABASE_URL"],
-        sslmode="require"
-    )
+    try:
+        conn = psycopg2.connect(
+            st.secrets["DATABASE_URL"],
+            sslmode="require",
+            connect_timeout=10,
+            application_name="streamlit_app"
+        )
+        return conn
+
+    except Exception as e:
+        st.error("❌ Erro ao conectar ao banco de dados.")
+        st.exception(e)
+        return None
+
+
+# ======================================================
+# 2. INICIALIZA CONEXÃO
+# ======================================================
 
 conn = init_connection()
 
-# Cursor configurado para retornar dicionários
-cursor = conn.cursor(
-    cursor_factory=psycopg2.extras.RealDictCursor
-)
+if conn is None:
+    st.stop()
 
-# Garante que não haja transações pendentes
-conn.rollback()
+# ======================================================
+# 3. CURSOR
+# ======================================================
+
+try:
+    cursor = conn.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
+
+    # Garante que não haja transações pendentes
+    conn.rollback()
+
+except Exception as e:
+    st.error("❌ Erro ao criar cursor.")
+    st.exception(e)
+    st.stop()
+
+# ======================================================
+# 4. TESTE DE CONEXÃO (opcional, mas recomendado)
+# ======================================================
+
+try:
+    cursor.execute("SELECT 1 as teste;")
+    result = cursor.fetchone()
+    st.success("✅ Conexão com Supabase OK!")
+
+except Exception as e:
+    st.error("❌ Conectou mas não conseguiu executar query.")
+    st.exception(e)
+
 
 
 # ======================================================
@@ -393,4 +432,5 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
