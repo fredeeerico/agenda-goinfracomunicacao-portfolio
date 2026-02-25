@@ -1,54 +1,45 @@
 import streamlit as st
-import psycopg2
-import psycopg2.extras
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from datetime import date, time, datetime, timedelta, timezone
 
 # ======================================================
-# 1. CONEXÃO COM O BANCO DE DADOS
+# 1. CONEXÃO COM GOOGLE SHEETS
 # ======================================================
 
 @st.cache_resource
-def init_connection():
-    """
-    Inicializa a conexão com o PostgreSQL (Supabase).
-    Usa pooler IPv4 e trata erros corretamente.
-    """
-    try:
-        conn = psycopg2.connect(
-            st.secrets["DATABASE_URL"],
-            sslmode="require",
-            connect_timeout=10,
-            application_name="streamlit_app"
-        )
-        return conn
+def connect_sheets():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
 
-    except Exception as e:
-        st.error("❌ Erro ao conectar ao banco de dados.")
-        st.exception(e)
-        return None
-
-
-# ======================================================
-# 1.1 INICIALIZA CONEXÃO E CURSOR  ✅ (ESSENCIAL)
-# ======================================================
-
-conn = init_connection()
-
-if conn is None:
-    st.stop()
-
-try:
-    cursor = conn.cursor(
-        cursor_factory=psycopg2.extras.RealDictCursor
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
     )
-    conn.rollback()
-except Exception as e:
-    st.error("❌ Erro ao criar cursor.")
-    st.exception(e)
-    st.stop()
+
+    client = gspread.authorize(creds)
+
+    sheet = client.open("Agenda PRCOSET").sheet1
+
+    return sheet
+
+
+# ======================================================
+# 1.1 INICIALIZA PLANILHA
+# ======================================================
+
+sheet = connect_sheets()
+
+
+def carregar_dados():
+    dados = sheet.get_all_records()
+    return pd.DataFrame(dados)
+
+
+df = carregar_dados()
 
 
 # -----------------------------
@@ -416,5 +407,6 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
 
