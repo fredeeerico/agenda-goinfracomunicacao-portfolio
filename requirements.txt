@@ -5,11 +5,3 @@ pandas
 reportlab
 gspread
 google-auth
-pip freeze > requirements.txt
-git add .
-git commit -m "Adicionando suporte Google Sheets"
-git push
-
-
-
-
