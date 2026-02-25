@@ -1,6 +1,7 @@
 import streamlit as st
 import psycopg2
 import psycopg2.extras
+pip install gspread google-auth
 from datetime import date, time, datetime, timedelta, timezone
 
 # ======================================================
@@ -413,3 +414,4 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
