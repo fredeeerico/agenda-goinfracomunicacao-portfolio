@@ -1,9 +1,16 @@
 import streamlit as st
 import gspread
 import pandas as pd
-import psycopg2
-conn = psycopg2.connect(st.secrets["database_url"])
-cursor = conn.cursor()
+import mysql.connector
+
+conn = mysql.connector.connect(
+    host=st.secrets["db_host"],
+    user=st.secrets["db_user"],
+    password=st.secrets["db_password"],
+    database=st.secrets["db_name"]
+)
+
+cursor = conn.cursor(dictionary=True)
 from google.oauth2.service_account import Credentials
 from datetime import date, time, datetime, timedelta, timezone
 
@@ -374,6 +381,7 @@ elif st.session_state.aba_atual == "LISTA":
         if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
             
             st.rerun()
+
 
 
 
