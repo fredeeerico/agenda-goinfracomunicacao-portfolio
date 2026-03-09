@@ -22,7 +22,7 @@ def connect_sheets():
 
     client = gspread.authorize(creds)
 
-    sheet = client.open("Agenda PRCOSET").sheet1
+    sheet = client.open("1RRabjIuJA0BbVm5Xq969zMHM9rn0QvBKV8V_txnBNfw").sheet1
 
     return sheet
 
@@ -407,6 +407,7 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
 
 
