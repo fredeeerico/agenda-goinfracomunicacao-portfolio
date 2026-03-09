@@ -10,7 +10,6 @@ from datetime import date, time, datetime, timedelta, timezone
 
 @st.cache_resource
 def connect_sheets():
-
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
@@ -23,145 +22,178 @@ def connect_sheets():
 
     client = gspread.authorize(creds)
 
-    sheet = client.open_by_key(
-        "1RRabjIuJA0BbVm5Xq969zMHM9rn0QvBKV8V_txnBNfw"
-    ).sheet1
+    sheet = client.open("Agenda PRCOSET").sheet1
 
     return sheet
 
 
 # ======================================================
-# 2. CARREGAR DADOS
+# 1.1 INICIALIZA PLANILHA
 # ======================================================
 
 sheet = connect_sheets()
 
+
 def carregar_dados():
-
-    try:
-        dados = sheet.get_all_records()
-        return pd.DataFrame(dados)
-
-    except Exception as e:
-        st.error("Erro ao carregar dados da planilha.")
-        st.exception(e)
-        return pd.DataFrame()
+    dados = sheet.get_all_records()
+    return pd.DataFrame(dados)
 
 
 df = carregar_dados()
 
 
-# ======================================================
-# 3. CONFIG APP
-# ======================================================
-
-st.set_page_config(
-    page_title="Agenda PRCOSET",
-    page_icon="📅",
-    layout="wide"
-)
+# -----------------------------
+# 2. ESTADOS E CONFIGURAÇÃO
+# -----------------------------
+st.set_page_config(page_title="Agenda PRCOSET", page_icon="📅", layout="wide")
 
 for key in ["aba_atual", "editando", "evento_id", "msg"]:
     if key not in st.session_state:
         st.session_state[key] = "LISTA" if key == "aba_atual" else None
 
-
+# Título principal
 st.title("📅 Agenda PRCOSET")
 
-
+# Subtítulo / assinatura estilo jornal
 st.markdown(
-"""
-<div style="
-font-size:12px;
-color:#777;
-margin-top:-10px;
-margin-bottom:10px;
-padding-bottom:6px;
-border-bottom:1px solid #e0e0e0;
-">
-Aplicativo desenvolvido por
-<a href="https://github.com/fredeeerico" target="_blank"
-style="text-decoration:none;font-weight:600;color:#2b488e;">
-Fred Augusto
-</a>
-— dúvidas,
-<a href="https://wa.me/5562981120444"
-target="_blank"
-style="color:#2b488e;text-decoration:none;">
-clique aqui
-</a>
-</div>
-""",
-unsafe_allow_html=True
+    """
+    <div style="
+        font-size:12px;
+        color:#777;
+        margin-top:-10px;
+        margin-bottom:10px;
+        padding-bottom:6px;
+        border-bottom:1px solid #e0e0e0;
+    ">
+        Aplicativo desenvolvido por 
+        <a href="https://github.com/fredeeerico" target="_blank"
+           style="text-decoration:none; font-weight:600; color:#2b488e;">
+           Fred Augusto
+        </a>
+        — dúvidas, 
+        <a href="https://wa.me/5562981120444" target="_blank"
+           style="color:#2b488e; text-decoration:none;">
+           clique aqui
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
-# ======================================================
-# MENU
-# ======================================================
-
-cm1, cm2, _ = st.columns([1,1,4])
+# Menu Superior
+cm1, cm2, _ = st.columns([1, 1, 4])
 
 if cm1.button("📋 Ver Lista", use_container_width=True):
     st.session_state.aba_atual = "LISTA"
     st.rerun()
 
 if cm2.button("➕ Novo Evento", use_container_width=True):
-
     st.session_state.aba_atual = "FORM"
     st.session_state.editando = False
     st.session_state.evento_id = None
     st.rerun()
 
-
+# Mensagens
 if st.session_state.msg:
     st.success(st.session_state.msg)
     st.session_state.msg = None
 
 
-# ======================================================
-# FORMULÁRIO
-# ======================================================
-
+# -----------------------------
+# 3. TELA DE FORMULÁRIO
+# -----------------------------
 if st.session_state.aba_atual == "FORM":
 
-    st.subheader("📝 Detalhes do Evento")
+    ev_db = None
+
+    if st.session_state.editando and st.session_state.evento_id:
+        cursor.execute(
+            "SELECT * FROM eventos WHERE id=%s",
+            (st.session_state.evento_id,)
+        )
+        ev_db = cursor.fetchone()
 
     with st.form("form_evento"):
+        st.subheader("📝 Detalhes do Evento")
 
         c_t1, c_t2 = st.columns(2)
+        pres_val = c_t1.checkbox(
+            "👑 Agenda Presidente?",
+            value=bool(ev_db["agenda_presidente"]) if ev_db else False
+        )
+        mot_val = c_t2.checkbox(
+            "🚗 Precisa Motorista?",
+            value=bool(ev_db["precisa_motorista"]) if ev_db else False
+        )
 
-        pres_val = c_t1.checkbox("👑 Agenda Presidente?")
-        mot_val = c_t2.checkbox("🚗 Precisa Motorista?")
-
-        tit_val = st.text_input("📝 Título")
+        tit_val = st.text_input(
+            "📝 Título",
+            value=ev_db["titulo"] if ev_db else ""
+        )
 
         c = st.columns(3)
+        data_val = c[0].date_input(
+            "📅 Data",
+            value=ev_db["data"] if ev_db else date.today()
+        )
+        hi_val = c[1].time_input(
+            "⏰ Início",
+            value=ev_db["hora_inicio"] if ev_db else time(9, 0)
+        )
+        hf_val = c[2].time_input(
+            "⏰ Fim",
+            value=ev_db["hora_fim"] if ev_db else time(10, 0)
+        )
 
-        data_val = c[0].date_input("📅 Data", value=date.today())
-        hi_val = c[1].time_input("⏰ Início", value=time(9,0))
-        hf_val = c[2].time_input("⏰ Fim", value=time(10,0))
+        loc_val = st.text_input(
+            "📍 Local",
+            value=ev_db["local"] if ev_db else ""
+        )
+        end_val = st.text_input(
+            "🏠 Endereço",
+            value=ev_db["endereco"] if ev_db else ""
+        )
 
-        loc_val = st.text_input("📍 Local")
-        end_val = st.text_input("🏠 Endereço")
+        cob_opcoes = ["Redes", "Foto", "Vídeo", "Imprensa"]
+        cob_def = (
+            ev_db["cobertura"].split(", ")
+            if ev_db and ev_db["cobertura"]
+            else []
+        )
 
         cob_val = st.multiselect(
             "🎥 Cobertura",
-            ["Redes","Foto","Vídeo","Imprensa"]
+            cob_opcoes,
+            default=[c for c in cob_def if c in cob_opcoes]
         )
 
-        resp_val = st.text_input("👥 Responsáveis")
-        eq_val = st.text_input("🎒 Equipamentos")
-
-        obs_val = st.text_area("📝 Observações")
+        resp_val = st.text_input(
+            "👥 Responsáveis",
+            value=ev_db["responsaveis"] if ev_db else ""
+        )
+        eq_val = st.text_input(
+            "🎒 Equipamentos",
+            value=ev_db["equipamentos"] if ev_db else ""
+        )
+        obs_val = st.text_area(
+            "📝 Observações",
+            value=ev_db["observacoes"] if ev_db else ""
+        )
 
         cmot1, cmot2 = st.columns(2)
-
-        nm_val = cmot1.text_input("Nome Motorista")
-        tm_val = cmot2.text_input("Tel Motorista")
+        nm_val = cmot1.text_input(
+            "Nome Motorista",
+            value=ev_db["motorista_nome"] if ev_db else ""
+        )
+        tm_val = cmot2.text_input(
+            "Tel Motorista",
+            value=ev_db["motorista_telefone"] if ev_db else ""
+        )
 
         st_val = st.selectbox(
             "Status",
-            ["ATIVO","CANCELADO"]
+            ["ATIVO", "CANCELADO"],
+            index=0 if not ev_db or ev_db["status"] == "ATIVO" else 1
         )
 
         salvar = st.form_submit_button(
@@ -170,14 +202,12 @@ if st.session_state.aba_atual == "FORM":
         )
 
         if salvar:
-
-            nova_linha = [
-
+            dados = (
                 1 if pres_val else 0,
                 tit_val,
-                str(data_val),
-                hi_val.strftime("%H:%M"),
-                hf_val.strftime("%H:%M"),
+                data_val,
+                hi_val,
+                hf_val,
                 loc_val,
                 end_val,
                 ", ".join(cob_val),
@@ -187,108 +217,195 @@ if st.session_state.aba_atual == "FORM":
                 1 if mot_val else 0,
                 nm_val,
                 tm_val,
-                st_val
-            ]
+                st_val,
+            )
 
-            sheet.append_row(nova_linha)
+            try:
+                if st.session_state.editando:
+                    cursor.execute(
+                        """
+                        UPDATE eventos SET
+                            agenda_presidente=%s,
+                            titulo=%s,
+                            data=%s,
+                            hora_inicio=%s,
+                            hora_fim=%s,
+                            local=%s,
+                            endereco=%s,
+                            cobertura=%s,
+                            responsaveis=%s,
+                            equipamentos=%s,
+                            observacoes=%s,
+                            precisa_motorista=%s,
+                            motorista_nome=%s,
+                            motorista_telefone=%s,
+                            status=%s
+                        WHERE id=%s
+                        """,
+                        dados + (st.session_state.evento_id,),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        INSERT INTO eventos (
+                            agenda_presidente, titulo, data, hora_inicio,
+                            hora_fim, local, endereco, cobertura,
+                            responsaveis, equipamentos, observacoes,
+                            precisa_motorista, motorista_nome,
+                            motorista_telefone, status
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        dados,
+                    )
 
-            st.session_state.msg = "💾 Evento salvo com sucesso!"
-            st.session_state.aba_atual = "LISTA"
+                conn.commit()
+                st.session_state.aba_atual = "LISTA"
+                st.session_state.msg = "💾 Evento salvo com sucesso!"
+                st.rerun()
 
-            st.rerun()
+            except Exception as e:
+                conn.rollback()
+                st.error(f"Erro ao salvar: {e}")
 
 
-# ======================================================
-# LISTAGEM
-# ======================================================
-
+# -----------------------------
+# 4. TELA DE LISTAGEM
+# -----------------------------
 elif st.session_state.aba_atual == "LISTA":
 
-    df = carregar_dados()
-
-    if df.empty:
-        st.info("Nenhum evento encontrado.")
-        st.stop()
-
     with st.expander("🔍 FILTRAR BUSCA", expanded=False):
-
         f_col1, f_col2, f_col3 = st.columns(3)
 
-        filtro_data = f_col1.date_input(
-            "Filtrar por Data",
-            value=None
+        with f_col1:
+            filtro_data = st.date_input("Filtrar por Data", value=None)
+
+        with f_col2:
+            filtro_tipo = st.selectbox(
+                "Tipo de Agenda",
+                ["Todas", "Agenda do Presidente", "Outras Agendas"],
+            )
+
+        with f_col3:
+            filtro_equipe = st.text_input(
+                "Buscar por Responsável",
+                placeholder="Ex: Fred, Ana...",
+            )
+
+    cursor.execute(
+        "SELECT * FROM eventos ORDER BY data ASC, hora_inicio ASC"
+    )
+    eventos = cursor.fetchall()
+
+    agora_dt = datetime.now(timezone(timedelta(hours=-3))).replace(
+        tzinfo=None
+    )
+    hoje = agora_dt.date()
+    hora_agora_str = agora_dt.time().strftime("%H:%M")
+
+    def formatar_hora(valor):
+        if isinstance(valor, time):
+            return valor.strftime("%H:%M")
+        try:
+            return str(valor)[:5]
+        except Exception:
+            return "00:00"
+
+    if not eventos:
+        st.info("Nenhum evento encontrado.")
+
+    for ev in eventos:
+        d_dt = (
+            ev["data"]
+            if isinstance(ev["data"], date)
+            else datetime.strptime(str(ev["data"]), "%Y-%m-%d").date()
         )
-
-        filtro_tipo = f_col2.selectbox(
-            "Tipo de Agenda",
-            ["Todas","Agenda do Presidente","Outras Agendas"]
-        )
-
-        filtro_equipe = f_col3.text_input(
-            "Buscar por Responsável"
-        )
-
-    for i, ev in df.iterrows():
-
-        d_dt = datetime.strptime(
-            str(ev["data"]),
-            "%Y-%m-%d"
-        ).date()
 
         if filtro_data and d_dt != filtro_data:
             continue
-
         if filtro_tipo == "Agenda do Presidente" and ev["agenda_presidente"] != 1:
             continue
-
         if filtro_tipo == "Outras Agendas" and ev["agenda_presidente"] == 1:
             continue
-
         if filtro_equipe and filtro_equipe.lower() not in str(ev["responsaveis"]).lower():
             continue
 
         cor_base = "#2b488e" if ev["agenda_presidente"] == 1 else "#109439"
+        cor_fonte = "white"
+        borda_4_lados = "1px solid rgba(255,255,255,0.2)"
+        barra_esquerda = "12px solid #ffffff44"
+        badge, opac = "", "1"
+        decor = "line-through" if ev["status"] == "CANCELADO" else "none"
+
+        if d_dt < hoje:
+            cor_base, cor_fonte, opac = "#d9d9d9", "#666666", "0.7"
+            barra_esquerda = "12px solid #999999"
+
+        elif d_dt == hoje:
+            borda_4_lados = "4px solid #FFD700"
+            barra_esquerda = "12px solid #FFD700"
+            badge = "<span style='background:#FFD700; color:black; padding:3px 10px; border-radius:10px; font-weight:bold; font-size:12px; margin-left:10px;'>HOJE!</span>"
+
+            hi_s = formatar_hora(ev["hora_inicio"])
+            hf_s = formatar_hora(ev["hora_fim"])
+            if hi_s <= hora_agora_str <= hf_s:
+                borda_4_lados = "4px solid #ff2b2b"
+                barra_esquerda = "12px solid #ff2b2b"
+                badge = "<span style='background:#ff2b2b; color:white; padding:3px 10px; border-radius:10px; font-weight:bold; font-size:12px; margin-left:10px;'>AGORA!</span>"
+
+        link_zap = ""
+        if ev["precisa_motorista"] == 1 and ev["motorista_telefone"]:
+            zap_limpo = "".join(
+                filter(str.isdigit, str(ev["motorista_telefone"]))
+            )
+            link_zap = f"<br>🚗 <b>Motorista:</b> {ev['motorista_nome']} (<a href='https://wa.me/{zap_limpo}' style='color:{cor_fonte}; font-weight:bold;'>{ev['motorista_telefone']}</a>)"
 
         st.markdown(
-f"""
-<div style="background:{cor_base};
-color:white;
-padding:22px;
-border-radius:15px;
-margin-bottom:15px;">
+            f"""
+        <div style="background:{cor_base}; color:{cor_fonte}; padding:22px; border-radius:15px; margin-bottom:15px; 
+                    opacity:{opac}; text-decoration:{decor}; 
+                    border:{borda_4_lados}; border-left:{barra_esquerda};">
+            <h3 style="margin:0; font-size:22px;">{'👑' if ev['agenda_presidente'] == 1 else '📌'} {ev['titulo']} {badge} 
+                <span style="float:right; font-size:12px; background:rgba(0,0,0,0.3); padding:5px 12px; border-radius:20px;">{ev['status']}</span>
+            </h3>
+            <div style="margin-top:12px; font-size:16px; line-height:1.6;">
+                <b>📅 {d_dt.strftime('%d/%m/%Y')}</b> | ⏰ {formatar_hora(ev['hora_inicio'])} às {formatar_hora(ev['hora_fim'])}<br>
+                📍 <b>Local:</b> {ev['local']}<br>
+                🏠 <b>Endereço:</b> {ev['endereco']}<br>
+                🎥 <b>Cobertura:</b> {ev['cobertura']} | 👥 <b>Equipe:</b> {ev['responsaveis']}<br>
+                🎒 <b>Equipamentos:</b> {ev['equipamentos']} {link_zap}
+            </div>
+            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 15px; font-size:14px; border: 1px dashed rgba(255,255,255,0.3);">
+                <b>📝 OBSERVAÇÕES:</b> {ev['observacoes'] if ev['observacoes'] else "Sem observações."}
+            </div>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
 
-<h3 style="margin:0;">
-{'👑' if ev['agenda_presidente']==1 else '📌'} {ev['titulo']}
-</h3>
+        c1, c2, c3, _ = st.columns([1, 1.2, 1, 4])
 
-<div style="margin-top:10px;">
+        if c1.button("✏️ Editar", key=f"e_{ev['id']}"):
+            st.session_state.editando = True
+            st.session_state.evento_id = ev["id"]
+            st.session_state.aba_atual = "FORM"
+            st.rerun()
 
-<b>📅 {d_dt.strftime('%d/%m/%Y')}</b>
-| ⏰ {ev['hora_inicio']} às {ev['hora_fim']}<br>
+        if c2.button("🚫 Alterar Status", key=f"s_{ev['id']}"):
+            novo_s = "CANCELADO" if ev["status"] == "ATIVO" else "ATIVO"
+            cursor.execute(
+                "UPDATE eventos SET status=%s WHERE id=%s",
+                (novo_s, ev["id"]),
+            )
+            conn.commit()
+            st.rerun()
 
-📍 <b>Local:</b> {ev['local']}<br>
+        if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
+            cursor.execute(
+                "DELETE FROM eventos WHERE id=%s",
+                (ev["id"],),
+            )
+            conn.commit()
+            st.rerun()
 
-🏠 <b>Endereço:</b> {ev['endereco']}<br>
 
-🎥 <b>Cobertura:</b> {ev['cobertura']}<br>
-
-👥 <b>Equipe:</b> {ev['responsaveis']}<br>
-
-🎒 <b>Equipamentos:</b> {ev['equipamentos']}
-
-</div>
-
-<div style="margin-top:12px;
-background:rgba(255,255,255,0.15);
-padding:10px;
-border-radius:8px;">
-
-<b>📝 Observações:</b>
-{ev['observacoes'] if ev['observacoes'] else "Sem observações"}
-
-</div>
-
-</div>
-""",
-unsafe_allow_html=True
-)
