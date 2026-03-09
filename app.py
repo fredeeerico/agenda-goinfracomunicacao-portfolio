@@ -411,27 +411,34 @@ elif st.session_state.aba_atual == "LISTA":
             link_zap = f"<br>🚗 <b>Motorista:</b> {ev['motorista_nome']} (<a href='https://wa.me/{zap_limpo}' style='color:{cor_fonte}; font-weight:bold;'>{ev['motorista_telefone']}</a>)"
 
         st.markdown(
-            f"""
-        <div style="background:{cor_base}; color:{cor_fonte}; padding:22px; border-radius:15px; margin-bottom:15px; 
-                    opacity:{opac}; text-decoration:{decor}; 
-                    border:{borda_4_lados}; border-left:{barra_esquerda};">
-            <h3 style="margin:0; font-size:22px;">{'👑' if ev['agenda_presidente'] == 1 else '📌'} {ev['titulo']} {badge} 
-                <span style="float:right; font-size:12px; background:rgba(0,0,0,0.3); padding:5px 12px; border-radius:20px;">{ev['status']}</span>
-            </h3>
-            <div style="margin-top:12px; font-size:16px; line-height:1.6;">
-                <b>📅 {d_dt.strftime('%d/%m/%Y')}</b> | ⏰ {formatar_hora(ev['hora_inicio'])} às {formatar_hora(ev['hora_fim'])}<br>
-                📍 <b>Local:</b> {ev['local']}<br>
-                🏠 <b>Endereço:</b> {ev['endereco']}<br>
-                🎥 <b>Cobertura:</b> {ev['cobertura']} | 👥 <b>Equipe:</b> {ev['responsaveis']}<br>
-                🎒 <b>Equipamentos:</b> {ev['equipamentos']} {link_zap}
-            </div>
-            <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 15px; font-size:14px; border: 1px dashed rgba(255,255,255,0.3);">
-                <b>📝 OBSERVAÇÕES:</b> {ev['observacoes'] if ev['observacoes'] else "Sem observações."}
-            </div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+    f"""
+<div style="background:{cor_base}; color:{cor_fonte}; padding:14px 18px; border-radius:15px; margin-bottom:12px; 
+            opacity:{opac}; text-decoration:{decor}; 
+            border:{borda_4_lados}; border-left:{barra_esquerda};">
+
+    <h3 style="margin:0; font-size:20px; line-height:1.2;">
+        {'👑' if ev['agenda_presidente'] == 1 else '📌'} {ev['titulo']} {badge}
+        <span style="float:right; font-size:11px; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:20px;">
+            {ev['status']}
+        </span>
+    </h3>
+
+    <div style="margin-top:8px; font-size:15px; line-height:1.35;">
+        <b>📅 {d_dt.strftime('%d/%m/%Y')}</b> | ⏰ {formatar_hora(ev['hora_inicio'])} às {formatar_hora(ev['hora_fim'])}<br>
+        📍 <b>Local:</b> {ev['local']}<br>
+        🏠 <b>Endereço:</b> {ev['endereco']}<br>
+        🎥 <b>Cobertura:</b> {ev['cobertura']} | 👥 <b>Equipe:</b> {ev['responsaveis']}<br>
+        🎒 <b>Equipamentos:</b> {ev['equipamentos']} {link_zap}
+    </div>
+
+    <div style="background: rgba(255,255,255,0.15); padding:8px; border-radius:8px; margin-top:10px; font-size:13px; border:1px dashed rgba(255,255,255,0.3);">
+        <b>📝 OBSERVAÇÕES:</b> {ev['observacoes'] if ev['observacoes'] else "Sem observações."}
+    </div>
+
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
         c1, c2, c3, _ = st.columns([1, 1.2, 1, 4])
 
@@ -457,6 +464,7 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
 
 
