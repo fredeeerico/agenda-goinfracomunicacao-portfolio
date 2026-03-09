@@ -10,6 +10,7 @@ from datetime import date, time, datetime, timedelta, timezone
 
 @st.cache_resource
 def connect_sheets():
+
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
@@ -22,7 +23,8 @@ def connect_sheets():
 
     client = gspread.authorize(creds)
 
-    sheet = client.open("1RRabjIuJA0BbVm5Xq969zMHM9rn0QvBKV8V_txnBNfw").sheet1
+    # CONEXÃO DIRETA PELO ID (mais estável)
+    sheet = client.open_by_key("1RRabjIuJA0BbVm5Xq969zMHM9rn0QvBKV8V_txnBNfw").sheet1
 
     return sheet
 
@@ -35,8 +37,13 @@ sheet = connect_sheets()
 
 
 def carregar_dados():
-    dados = sheet.get_all_records()
-    return pd.DataFrame(dados)
+    try:
+        dados = sheet.get_all_records()
+        return pd.DataFrame(dados)
+    except Exception as e:
+        st.error("Erro ao carregar dados da planilha.")
+        st.exception(e)
+        return pd.DataFrame()
 
 
 df = carregar_dados()
@@ -407,6 +414,7 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
 
 
