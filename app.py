@@ -412,7 +412,7 @@ elif st.session_state.aba_atual == "LISTA":
 
         st.markdown(
             f"""
-        <div style="background:{cor_base}; color:{cor_fonte}; padding:22px; border-radius:15px; margin-bottom:15px; 
+        <div style="background:{cor_base}; color:{cor_fonte}; padding:18px; border-radius:15px; margin-bottom:15px; 
                     opacity:{opac}; text-decoration:{decor}; 
                     border:{borda_4_lados}; border-left:{barra_esquerda};">
             <h3 style="margin:0; font-size:22px;">{'👑' if ev['agenda_presidente'] == 1 else '📌'} {ev['titulo']} {badge} 
@@ -457,6 +457,7 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
 
 
