@@ -114,11 +114,10 @@ if st.session_state.aba_atual == "FORM":
     ev_db = None
 
     if st.session_state.editando and st.session_state.evento_id:
-        cursor.execute(
-            "SELECT * FROM eventos WHERE id=%s",
-            (st.session_state.evento_id,)
-        )
-        ev_db = cursor.fetchone()
+        ev_db = None
+
+        if st.session_state.editando and st.session_state.evento_id:
+            ev_db = df[df["id"] == st.session_state.evento_id].iloc[0]
 
     with st.form("form_evento"):
         st.subheader("📝 Detalhes do Evento")
@@ -228,45 +227,13 @@ if st.session_state.aba_atual == "FORM":
             )
 
             try:
-                if st.session_state.editando:
-                    cursor.execute(
-                        """
-                        UPDATE eventos SET
-                            agenda_presidente=%s,
-                            titulo=%s,
-                            data=%s,
-                            hora_inicio=%s,
-                            hora_fim=%s,
-                            local=%s,
-                            endereco=%s,
-                            cobertura=%s,
-                            responsaveis=%s,
-                            equipamentos=%s,
-                            observacoes=%s,
-                            precisa_motorista=%s,
-                            motorista_nome=%s,
-                            motorista_telefone=%s,
-                            status=%s
-                        WHERE id=%s
-                        """,
-                        dados + (st.session_state.evento_id,),
-                    )
-                else:
-                    cursor.execute(
-                        """
-                        INSERT INTO eventos (
-                            agenda_presidente, titulo, data, hora_inicio,
-                            hora_fim, local, endereco, cobertura,
-                            responsaveis, equipamentos, observacoes,
-                            precisa_motorista, motorista_nome,
-                            motorista_telefone, status
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        dados,
-                    )
+                nova_linha = list(dados)
 
-                conn.commit()
+                sheet.append_row(nova_linha)
+                
+                st.session_state.aba_atual = "LISTA"
+                st.session_state.msg = "💾 Evento salvo com sucesso!"
+                st.rerun()
                 st.session_state.aba_atual = "LISTA"
                 st.session_state.msg = "💾 Evento salvo com sucesso!"
                 st.rerun()
@@ -300,9 +267,7 @@ elif st.session_state.aba_atual == "LISTA":
             )
 
     cursor.execute(
-        "SELECT * FROM eventos ORDER BY data ASC, hora_inicio ASC"
-    )
-    eventos = cursor.fetchall()
+        eventos = df.to_dict("records")
 
     agora_dt = datetime.now(timezone(timedelta(hours=-3))).replace(
         tzinfo=None
@@ -400,20 +365,13 @@ elif st.session_state.aba_atual == "LISTA":
 
         if c2.button("🚫 Alterar Status", key=f"s_{ev['id']}"):
             novo_s = "CANCELADO" if ev["status"] == "ATIVO" else "ATIVO"
-            cursor.execute(
-                "UPDATE eventos SET status=%s WHERE id=%s",
-                (novo_s, ev["id"]),
-            )
-            conn.commit()
+            
             st.rerun()
 
         if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
-            cursor.execute(
-                "DELETE FROM eventos WHERE id=%s",
-                (ev["id"],),
-            )
-            conn.commit()
+            
             st.rerun()
+
 
 
 
