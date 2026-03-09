@@ -36,6 +36,53 @@ def connect_sheets():
 
 sheet = connect_sheets()
 
+class FakeCursor:
+
+    def __init__(self, sheet):
+        self.sheet = sheet
+        self.result = []
+
+    def execute(self, query, params=None):
+
+        df = pd.DataFrame(self.sheet.get_all_records())
+
+        if query.strip().upper().startswith("SELECT"):
+            self.result = df.to_dict("records")
+
+        elif query.strip().upper().startswith("DELETE"):
+            id_del = params[0]
+            rows = self.sheet.get_all_values()
+
+            for i, r in enumerate(rows):
+                if str(r[0]) == str(id_del):
+                    self.sheet.delete_rows(i + 1)
+                    break
+
+        elif query.strip().upper().startswith("UPDATE"):
+            # atualização simplificada
+            pass
+
+        elif query.strip().upper().startswith("INSERT"):
+            self.sheet.append_row(list(params))
+
+    def fetchall(self):
+        return self.result
+
+    def fetchone(self):
+        return self.result[0] if self.result else None
+
+
+class FakeConn:
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+cursor = FakeCursor(sheet)
+conn = FakeConn()
 
 def carregar_dados():
     dados = sheet.get_all_records()
@@ -410,6 +457,7 @@ elif st.session_state.aba_atual == "LISTA":
             )
             conn.commit()
             st.rerun()
+
 
 
 
