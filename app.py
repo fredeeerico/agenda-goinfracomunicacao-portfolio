@@ -1,15 +1,17 @@
 import streamlit as st
 import gspread
 import pandas as pd
+import time
 from google.oauth2.service_account import Credentials
-from datetime import date, time, datetime, timedelta, timezone
+from datetime import date, time as dtime, datetime, timedelta, timezone
 
 # ======================================================
 # 1. CONEXÃO COM GOOGLE SHEETS
 # ======================================================
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def connect_sheets():
+
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
@@ -22,19 +24,49 @@ def connect_sheets():
 
     client = gspread.authorize(creds)
 
-    # CONEXÃO MAIS ESTÁVEL
-    sheet = client.open_by_key(
-        "1RRabjIuJA0BbVm5Xq969zMHM9rn0QvBKV8V_txnBNfw"
-    ).sheet1
-
-    return sheet
-
+    # retry automático
+    for tentativa in range(5):
+        try:
+            sheet = client.open_by_key(
+                "1RRabjIuJA0BbVm5Xq969zMHM9rn0QvBKV8V_txnBNfw"
+            ).sheet1
+            return sheet
+        except Exception as e:
+            if tentativa == 4:
+                st.error("Erro ao conectar ao Google Sheets.")
+                raise e
+            time.sleep(2)
 
 # ======================================================
-# 1.1 INICIALIZA PLANILHA
+# 2. CARREGAMENTO DE DADOS (CACHE)
+# ======================================================
+
+@st.cache_data(ttl=120)
+def carregar_dados():
+
+    sheet = connect_sheets()
+
+    try:
+        records = sheet.get_all_records()
+
+        if not records:
+            return pd.DataFrame()
+
+        return pd.DataFrame(records)
+
+    except Exception:
+        return pd.DataFrame()
+
+# ======================================================
+# 3. INICIALIZA PLANILHA
 # ======================================================
 
 sheet = connect_sheets()
+
+
+# ======================================================
+# 4. FAKE CURSOR
+# ======================================================
 
 class FakeCursor:
 
@@ -44,26 +76,35 @@ class FakeCursor:
 
     def execute(self, query, params=None):
 
-        df = pd.DataFrame(self.sheet.get_all_records())
+        try:
 
-        if query.strip().upper().startswith("SELECT"):
-            self.result = df.to_dict("records")
+            df = carregar_dados()
 
-        elif query.strip().upper().startswith("DELETE"):
-            id_del = params[0]
-            rows = self.sheet.get_all_values()
+            if query.strip().upper().startswith("SELECT"):
+                self.result = df.to_dict("records")
 
-            for i, r in enumerate(rows):
-                if str(r[0]) == str(id_del):
-                    self.sheet.delete_rows(i + 1)
-                    break
+            elif query.strip().upper().startswith("DELETE"):
 
-        elif query.strip().upper().startswith("UPDATE"):
-            # atualização simplificada
-            pass
+                id_del = params[0]
+                rows = self.sheet.get_all_values()
 
-        elif query.strip().upper().startswith("INSERT"):
-            self.sheet.append_row(list(params))
+                for i, r in enumerate(rows):
+                    if str(r[0]) == str(id_del):
+                        self.sheet.delete_rows(i + 1)
+                        break
+
+                carregar_dados.clear()
+
+            elif query.strip().upper().startswith("UPDATE"):
+                pass
+
+            elif query.strip().upper().startswith("INSERT"):
+
+                self.sheet.append_row(list(params))
+                carregar_dados.clear()
+
+        except Exception as e:
+            st.error(f"Erro ao executar operação: {e}")
 
     def fetchall(self):
         return self.result
@@ -71,6 +112,10 @@ class FakeCursor:
     def fetchone(self):
         return self.result[0] if self.result else None
 
+
+# ======================================================
+# 5. FAKE CONN
+# ======================================================
 
 class FakeConn:
 
@@ -84,12 +129,15 @@ class FakeConn:
 cursor = FakeCursor(sheet)
 conn = FakeConn()
 
-def carregar_dados():
-    dados = sheet.get_all_records()
-    return pd.DataFrame(dados)
 
+# ======================================================
+# 6. CARREGAMENTO INICIAL
+# ======================================================
 
-df = carregar_dados()
+if "df" not in st.session_state:
+    st.session_state.df = carregar_dados()
+
+df = st.session_state.df
 
 
 # -----------------------------
