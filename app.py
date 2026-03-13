@@ -24,7 +24,6 @@ def connect_sheets():
 
     client = gspread.authorize(creds)
 
-    # retry automático
     for tentativa in range(5):
         try:
             sheet = client.open_by_key(
@@ -62,7 +61,6 @@ def carregar_dados():
 # ======================================================
 
 sheet = connect_sheets()
-
 
 # ======================================================
 # 4. FAKE CURSOR
@@ -129,7 +127,6 @@ class FakeConn:
 cursor = FakeCursor(sheet)
 conn = FakeConn()
 
-
 # ======================================================
 # 6. CARREGAMENTO INICIAL
 # ======================================================
@@ -138,7 +135,6 @@ if "df" not in st.session_state:
     st.session_state.df = carregar_dados()
 
 df = st.session_state.df
-
 
 # -----------------------------
 # 2. ESTADOS E CONFIGURAÇÃO
@@ -149,10 +145,8 @@ for key in ["aba_atual", "editando", "evento_id", "msg"]:
     if key not in st.session_state:
         st.session_state[key] = "LISTA" if key == "aba_atual" else None
 
-# Título principal
 st.title("📅 Agenda PRCOSET")
 
-# Subtítulo / assinatura estilo jornal
 st.markdown(
     """
     <div style="
@@ -178,7 +172,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Menu Superior
 cm1, cm2, _ = st.columns([1, 1, 4])
 
 if cm1.button("📋 Ver Lista", use_container_width=True):
@@ -191,11 +184,9 @@ if cm2.button("➕ Novo Evento", use_container_width=True):
     st.session_state.evento_id = None
     st.rerun()
 
-# Mensagens
 if st.session_state.msg:
     st.success(st.session_state.msg)
     st.session_state.msg = None
-
 
 # -----------------------------
 # 3. TELA DE FORMULÁRIO
@@ -207,7 +198,7 @@ if st.session_state.aba_atual == "FORM":
     if st.session_state.editando and st.session_state.evento_id:
         cursor.execute(
             "SELECT * FROM eventos WHERE id=%s",
-            (st.session_state.evento_id,)
+            (st.session_state.evento_id,),
         )
         ev_db = cursor.fetchone()
 
@@ -236,11 +227,11 @@ if st.session_state.aba_atual == "FORM":
         )
         hi_val = c[1].time_input(
             "⏰ Início",
-            value=ev_db["hora_inicio"] if ev_db else time(9, 0)
+            value=ev_db["hora_inicio"] if ev_db else dtime(9, 0)
         )
         hf_val = c[2].time_input(
             "⏰ Fim",
-            value=ev_db["hora_fim"] if ev_db else time(10, 0)
+            value=ev_db["hora_fim"] if ev_db else dtime(10, 0)
         )
 
         loc_val = st.text_input(
@@ -366,7 +357,6 @@ if st.session_state.aba_atual == "FORM":
                 conn.rollback()
                 st.error(f"Erro ao salvar: {e}")
 
-
 # -----------------------------
 # 4. TELA DE LISTAGEM
 # -----------------------------
@@ -402,8 +392,16 @@ elif st.session_state.aba_atual == "LISTA":
     hora_agora_str = agora_dt.time().strftime("%H:%M")
 
     def formatar_hora(valor):
-        if isinstance(valor, time):
+
+        if valor is None or valor == "":
+            return "00:00"
+
+        if isinstance(valor, dtime):
             return valor.strftime("%H:%M")
+
+        if isinstance(valor, datetime):
+            return valor.strftime("%H:%M")
+
         try:
             return str(valor)[:5]
         except Exception:
