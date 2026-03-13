@@ -58,15 +58,15 @@ def carregar_dados():
     except Exception:
         return pd.DataFrame()
 
-# Inicializa conexão global | Global connection initialization
+# Inicializa planilha | Initialize spreadsheet
 sheet = connect_sheets()
 
 # ======================================================
 # 3. ABSTRAÇÃO DE BANCO DE DADOS (FAKE CURSOR)
-# Classe que simula operações SQL (CRUD) diretamente na planilha.
+# Simula um cursor SQL para realizar operações de CRUD na planilha.
 #
 # DATABASE ABSTRACTION (FAKE CURSOR)
-# Class simulating SQL operations (CRUD) directly on the sheet.
+# Simulates a SQL cursor to perform CRUD operations on the sheet.
 # ======================================================
 
 class FakeCursor:
@@ -77,12 +77,10 @@ class FakeCursor:
     def execute(self, query, params=None):
         try:
             df = carregar_dados()
-            query_cmd = query.strip().upper()
-
-            if query_cmd.startswith("SELECT"):
+            if query.strip().upper().startswith("SELECT"):
                 self.result = df.to_dict("records")
 
-            elif query_cmd.startswith("DELETE"):
+            elif query.strip().upper().startswith("DELETE"):
                 id_del = params[0]
                 rows = self.sheet.get_all_values()
                 for i, r in enumerate(rows):
@@ -91,14 +89,12 @@ class FakeCursor:
                         break
                 carregar_dados.clear()
 
-            elif query_cmd.startswith("INSERT"):
+            elif query.strip().upper().startswith("UPDATE"):
+                pass
+
+            elif query.strip().upper().startswith("INSERT"):
                 self.sheet.append_row(list(params))
                 carregar_dados.clear()
-
-            elif query_cmd.startswith("UPDATE"):
-                # Lógica de atualização implementada via interface direta
-                # Update logic implemented via direct interface
-                pass
 
         except Exception as e:
             st.error(f"Erro ao executar operação: {e}")
@@ -117,15 +113,17 @@ cursor = FakeCursor(sheet)
 conn = FakeConn()
 
 # ======================================================
-# 4. CONFIGURAÇÃO DE ESTADO E UI
-# Define parâmetros da página e variáveis de sessão do Streamlit.
+# 4. GERENCIAMENTO DE ESTADO E CONFIGURAÇÃO UI
+# Define o layout da página e inicializa variáveis de sessão.
 #
-# STATE AND UI CONFIGURATION
-# Defines page parameters and Streamlit session variables.
+# STATE MANAGEMENT AND UI CONFIGURATION
+# Defines page layout and initializes session variables.
 # ======================================================
 
 if "df" not in st.session_state:
     st.session_state.df = carregar_dados()
+
+df = st.session_state.df
 
 st.set_page_config(page_title="Agenda PRCOSET", page_icon="📅", layout="wide")
 
@@ -135,22 +133,32 @@ for key in ["aba_atual", "editando", "evento_id", "msg"]:
 
 st.title("📅 Agenda PRCOSET")
 
-# Rodapé de créditos com HTML | Credits footer with HTML
 st.markdown(
-    """<div style="font-size:12px; color:#777; border-bottom:1px solid #e0e0e0; padding-bottom:6px;">
-    Aplicativo desenvolvido por <a href="https://github.com/fredeeerico" target="_blank">Fred Augusto</a></div>""",
+    """
+    <div style="font-size:12px; color:#777; margin-top:-10px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid #e0e0e0;">
+        Aplicativo desenvolvido por 
+        <a href="https://github.com/fredeeerico" target="_blank" style="text-decoration:none; font-weight:600; color:#2b488e;">
+           Fred Augusto
+        </a>
+        — dúvidas, 
+        <a href="https://wa.me/5562981120444" target="_blank" style="color:#2b488e; text-decoration:none;">
+           clique aqui
+        </a>
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
 # ======================================================
-# 5. CONTROLES DE NAVEGAÇÃO
-# Botões de alternância entre visualização e cadastro.
+# 5. CONTROLES DE NAVEGAÇÃO PRINCIPAL
+# Define os botões de troca de abas entre lista e formulário.
 #
-# NAVIGATION CONTROLS
-# Toggle buttons between view and registration modes.
+# MAIN NAVIGATION CONTROLS
+# Defines tab switching buttons between list and form.
 # ======================================================
 
 cm1, cm2, _ = st.columns([1, 1, 4])
+
 if cm1.button("📋 Ver Lista", use_container_width=True):
     st.session_state.aba_atual = "LISTA"
     st.rerun()
@@ -166,22 +174,23 @@ if st.session_state.msg:
     st.session_state.msg = None
 
 # ======================================================
-# 6. TELA DE FORMULÁRIO (INSERÇÃO/EDIÇÃO)
-# Interface de entrada de dados com validação e salvamento.
+# 6. TELA DE FORMULÁRIO (CADASTRO E EDIÇÃO)
+# Gerencia a lógica de entrada de dados e persistência.
 #
-# FORM SCREEN (INSERTION/EDITION)
-# Data entry interface with validation and saving logic.
+# FORM SCREEN (REGISTRATION AND EDITION)
+# Manages data entry logic and persistence.
 # ======================================================
 
 if st.session_state.aba_atual == "FORM":
     ev_db = None
+
     if st.session_state.editando and st.session_state.evento_id:
         cursor.execute("SELECT * FROM eventos WHERE id=%s", (st.session_state.evento_id,))
         ev_db = cursor.fetchone()
 
     with st.form("form_evento"):
         st.subheader("📝 Detalhes do Evento")
-        
+
         c_t1, c_t2 = st.columns(2)
         pres_val = c_t1.checkbox("👑 Agenda Presidente?", value=bool(ev_db["agenda_presidente"]) if ev_db else False)
         mot_val = c_t2.checkbox("🚗 Precisa Motorista?", value=bool(ev_db["precisa_motorista"]) if ev_db else False)
@@ -210,25 +219,48 @@ if st.session_state.aba_atual == "FORM":
 
         st_val = st.selectbox("Status", ["ATIVO", "CANCELADO"], index=0 if not ev_db or ev_db["status"] == "ATIVO" else 1)
 
-        if st.form_submit_button("💾 SALVAR EVENTO", use_container_width=True):
-            dados = (1 if pres_val else 0, tit_val, data_val, hi_val, hf_val, loc_val, end_val, 
-                     ", ".join(cob_val), resp_val, eq_val, obs_val, 1 if mot_val else 0, nm_val, tm_val, st_val)
-            
-            # Aqui seguiria a execução do INSERT/UPDATE conforme a lógica original
-            # INSERT/UPDATE execution follows here based on original logic
-            st.session_state.aba_atual = "LISTA"
-            st.session_state.msg = "💾 Evento processado com sucesso!"
-            st.rerun()
+        salvar = st.form_submit_button("💾 SALVAR EVENTO", use_container_width=True)
+
+        if salvar:
+            dados = (1 if pres_val else 0, tit_val, data_val, hi_val, hf_val, loc_val, end_val, ", ".join(cob_val), 
+                     resp_val, eq_val, obs_val, 1 if mot_val else 0, nm_val, tm_val, st_val)
+
+            try:
+                if st.session_state.editando:
+                    cursor.execute("""
+                        UPDATE eventos SET
+                        agenda_presidente=%s, titulo=%s, data=%s, hora_inicio=%s, hora_fim=%s,
+                        local=%s, endereco=%s, cobertura=%s, responsaveis=%s, equipamentos=%s,
+                        observacoes=%s, precisa_motorista=%s, motorista_nome=%s,
+                        motorista_telefone=%s, status=%s WHERE id=%s
+                    """, dados + (st.session_state.evento_id,))
+                else:
+                    cursor.execute("""
+                        INSERT INTO eventos (
+                            agenda_presidente, titulo, data, hora_inicio, hora_fim, local, endereco, 
+                            cobertura, responsaveis, equipamentos, observacoes, precisa_motorista, 
+                            motorista_nome, motorista_telefone, status
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, dados)
+
+                conn.commit()
+                st.session_state.aba_atual = "LISTA"
+                st.session_state.msg = "💾 Evento salvo com sucesso!"
+                st.rerun()
+            except Exception as e:
+                conn.rollback()
+                st.error(f"Erro ao salvar: {e}")
 
 # ======================================================
-# 7. TELA DE LISTAGEM E FILTROS
-# Visualização dinâmica de cards com lógica de cores e status.
+# 7. TELA DE LISTAGEM E FILTROS DINÂMICOS
+# Renderiza a lista de eventos com filtros e estilização visual.
 #
-# LISTING SCREEN AND FILTERS
-# Dynamic card visualization with color and status logic.
+# LISTING SCREEN AND DYNAMIC FILTERS
+# Renders the event list with filters and visual styling.
 # ======================================================
 
 elif st.session_state.aba_atual == "LISTA":
+
     with st.expander("🔍 FILTRAR BUSCA", expanded=False):
         f_col1, f_col2, f_col3 = st.columns(3)
         filtro_data = f_col1.date_input("Filtrar por Data", value=None)
@@ -237,31 +269,85 @@ elif st.session_state.aba_atual == "LISTA":
 
     cursor.execute("SELECT * FROM eventos ORDER BY data ASC, hora_inicio ASC")
     eventos = cursor.fetchall()
-    
+
     agora_dt = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
     hoje = agora_dt.date()
+    hora_agora_str = agora_dt.time().strftime("%H:%M")
+
+    def formatar_hora(valor):
+        if valor is None or valor == "": return "00:00"
+        if isinstance(valor, dtime): return valor.strftime("%H:%M")
+        if isinstance(valor, datetime): return valor.strftime("%H:%M")
+        try: return str(valor)[:5]
+        except Exception: return "00:00"
 
     if not eventos:
         st.info("Nenhum evento encontrado.")
 
     for ev in eventos:
-        # Lógica de renderização de cards (Cores, Badges, Botões)
-        # Card rendering logic (Colors, Badges, Buttons)
         d_dt = ev["data"] if isinstance(ev["data"], date) else datetime.strptime(str(ev["data"]), "%Y-%m-%d").date()
-        
-        # Filtros simplificados para o exemplo | Simplified filters for the example
+
+        # Lógica de filtros original | Original filter logic
         if filtro_data and d_dt != filtro_data: continue
+        if filtro_tipo == "Agenda do Presidente" and ev["agenda_presidente"] != 1: continue
+        if filtro_tipo == "Outras Agendas" and ev["agenda_presidente"] == 1: continue
+        if filtro_equipe and filtro_equipe.lower() not in str(ev["responsaveis"]).lower(): continue
+
+        # Lógica de cores e badges original | Original color and badge logic
+        cor_base = "#2b488e" if ev["agenda_presidente"] == 1 else "#109439"
+        cor_fonte, borda_4_lados, barra_esquerda, badge, opac = "white", "1px solid rgba(255,255,255,0.2)", "12px solid #ffffff44", "", "1"
+        decor = "line-through" if ev["status"] == "CANCELADO" else "none"
+
+        if d_dt < hoje:
+            cor_base, cor_fonte, opac, barra_esquerda = "#d9d9d9", "#666666", "0.7", "12px solid #999999"
+        elif d_dt == hoje:
+            borda_4_lados = barra_esquerda = "12px solid #FFD700"
+            badge = "<span style='background:#FFD700; color:black; padding:3px 10px; border-radius:10px; font-weight:bold; font-size:12px; margin-left:10px;'>HOJE!</span>"
+            hi_s, hf_s = formatar_hora(ev["hora_inicio"]), formatar_hora(ev["hora_fim"])
+            if hi_s <= hora_agora_str <= hf_s:
+                borda_4_lados = barra_esquerda = "12px solid #ff2b2b"
+                badge = "<span style='background:#ff2b2b; color:white; padding:3px 10px; border-radius:10px; font-weight:bold; font-size:12px; margin-left:10px;'>AGORA!</span>"
+
+        link_zap = ""
+        if ev["precisa_motorista"] == 1 and ev["motorista_telefone"]:
+            zap_limpo = "".join(filter(str.isdigit, str(ev["motorista_telefone"])))
+            link_zap = f"<br>🚗 <b>Motorista:</b> {ev['motorista_nome']} (<a href='https://wa.me/{zap_limpo}' style='color:{cor_fonte}; font-weight:bold;'>{ev['motorista_telefone']}</a>)"
 
         st.markdown(
-            f"""<div style="background:#2b488e; color:white; padding:20px; border-radius:15px; margin-bottom:10px;">
-                <h3 style="margin:0;">📌 {ev['titulo']}</h3>
-                <p>📅 {d_dt.strftime('%d/%m/%Y')} | 📍 {ev['local']}</p>
-            </div>""", unsafe_allow_html=True
+            f"""
+            <div style="background:{cor_base}; color:{cor_fonte}; padding:22px; border-radius:15px; margin-bottom:15px; 
+                        opacity:{opac}; text-decoration:{decor}; border:{borda_4_lados}; border-left:{barra_esquerda};">
+                <h3 style="margin:0; font-size:22px;">{'👑' if ev['agenda_presidente'] == 1 else '📌'} {ev['titulo']} {badge} 
+                    <span style="float:right; font-size:12px; background:rgba(0,0,0,0.3); padding:5px 12px; border-radius:20px;">{ev['status']}</span>
+                </h3>
+                <div style="margin-top:12px; font-size:16px; line-height:1.6;">
+                    <b>📅 {d_dt.strftime('%d/%m/%Y')}</b> | ⏰ {formatar_hora(ev['hora_inicio'])} às {formatar_hora(ev['hora_fim'])}<br>
+                    📍 <b>Local:</b> {ev['local']}<br>
+                    🏠 <b>Endereço:</b> {ev['endereco']}<br>
+                    🎥 <b>Cobertura:</b> {ev['cobertura']} | 👥 <b>Equipe:</b> {ev['responsaveis']}<br>
+                    🎒 <b>Equipamentos:</b> {ev['equipamentos']} {link_zap}
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 15px; font-size:14px; border: 1px dashed rgba(255,255,255,0.3);">
+                    <b>📝 OBSERVAÇÕES:</b> {ev['observacoes'] if ev['observacoes'] else "Sem observações."}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
+        # Botões de ação originais | Original action buttons
         c1, c2, c3, _ = st.columns([1, 1.2, 1, 4])
         if c1.button("✏️ Editar", key=f"e_{ev['id']}"):
-            st.session_state.editando = True
-            st.session_state.evento_id = ev["id"]
-            st.session_state.aba_atual = "FORM"
+            st.session_state.editando, st.session_state.evento_id, st.session_state.aba_atual = True, ev["id"], "FORM"
+            st.rerun()
+
+        if c2.button("🚫 Alterar Status", key=f"s_{ev['id']}"):
+            novo_s = "CANCELADO" if ev["status"] == "ATIVO" else "ATIVO"
+            cursor.execute("UPDATE eventos SET status=%s WHERE id=%s", (novo_s, ev["id"]))
+            conn.commit()
+            st.rerun()
+
+        if c3.button("🗑️ Excluir", key=f"d_{ev['id']}"):
+            cursor.execute("DELETE FROM eventos WHERE id=%s", (ev["id"],))
+            conn.commit()
             st.rerun()
